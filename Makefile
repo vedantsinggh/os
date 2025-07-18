@@ -7,11 +7,11 @@ LD = ld
 CXXFLAGS = -m32 -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti
 LDFLAGS = -m elf_i386 -T linker.ld
 
-SRC = src/kernel/main.cpp src/kernel/tty.cpp
+SRC = src/kernel/main.cpp src/kernel/tty.cpp src/kernel/idt.cpp
 OBJ = $(SRC:.cpp=.o) boot/loader.o
 DEPS = $(OBJ:.o=.d)
 
-kernel.elf: $(OBJ)
+kernel.elf: $(OBJ) boot/loader.o boot/idt_flush.o
 	$(LD) $(LDFLAGS) -o $@ $^
 
 kernel.iso: kernel.elf
@@ -29,6 +29,9 @@ kernel.iso: kernel.elf
 
 boot/loader.o: boot/loader.s
 	$(AS) --32 $< -o $@
+
+boot/idt_flush.o: boot/idt_flush.s
+	as --32 $< -o $@
 
 clean:
 	rm -rf *.o *.elf *.iso isodir
