@@ -1,22 +1,35 @@
-all: kernel.bin
+all: kernel.iso
 
-kernel.bin: loader.o kernel.o
-	ld -m elf_i386 -T linker.ld -o kernel.elf loader.o kernel.o
-	grub-file --is-x86-multiboot kernel.elf
+CXX = g++
+AS = as
+LD = ld
+
+CXXFLAGS = -m32 -ffreestanding -O0 -Wall -Wextra -fno-exceptions -fno-rtti
+LDFLAGS = -m elf_i386 -T linker.ld
+
+SRC = src/kernel/main.cpp src/kernel/tty.cpp
+OBJ = $(SRC:.cpp=.o) boot/loader.o
+DEPS = $(OBJ:.o=.d)
+
+kernel.elf: $(OBJ)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+kernel.iso: kernel.elf
 	mkdir -p isodir/boot/grub
-	cp kernel.elf isodir/boot/kernel.elf
+	cp $< isodir/boot/kernel.elf
 	echo 'set timeout=0' > isodir/boot/grub/grub.cfg
 	echo 'set default=0' >> isodir/boot/grub/grub.cfg
 	echo 'menuentry "My OS" {' >> isodir/boot/grub/grub.cfg
 	echo '  multiboot /boot/kernel.elf' >> isodir/boot/grub/grub.cfg
 	echo '}' >> isodir/boot/grub/grub.cfg
-	grub-mkrescue -o kernel.iso isodir
+	grub-mkrescue -o $@ isodir
 
-loader.o: loader.s
-	as --32 loader.s -o loader.o
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-kernel.o: kernel.cpp
-	g++ -m32 -ffreestanding -c kernel.cpp -o kernel.o
+boot/loader.o: boot/loader.s
+	$(AS) --32 $< -o $@
 
 clean:
-	rm -rf *.o *.iso *.elf isodir
+	rm -rf *.o *.elf *.iso isodir
+	find . -name "*.o" -delete
